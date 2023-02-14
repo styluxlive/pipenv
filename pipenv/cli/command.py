@@ -280,7 +280,7 @@ def uninstall(ctx, state, all_dev=False, all=False, **kwargs):
     """Uninstalls a provided package and removes it from Pipfile."""
     from ..core import do_uninstall
 
-    retcode = do_uninstall(
+    if retcode := do_uninstall(
         state.project,
         packages=state.installstate.packages,
         editable_packages=state.installstate.editables,
@@ -293,8 +293,7 @@ def uninstall(ctx, state, all_dev=False, all=False, **kwargs):
         pypi_mirror=state.pypi_mirror,
         categories=state.installstate.categories,
         ctx=ctx,
-    )
-    if retcode:
+    ):
         sys.exit(retcode)
 
 
@@ -667,7 +666,7 @@ def sync(ctx, state, bare=False, user=False, unused=False, **kwargs):
     """Installs all packages specified in Pipfile.lock."""
     from ..core import do_sync
 
-    retcode = do_sync(
+    if retcode := do_sync(
         state.project,
         dev=state.installstate.dev,
         python=state.python,
@@ -680,8 +679,7 @@ def sync(ctx, state, bare=False, user=False, unused=False, **kwargs):
         system=state.system,
         extra_pip_args=state.installstate.extra_pip_args,
         categories=state.installstate.categories,
-    )
-    if retcode:
+    ):
         ctx.abort()
 
 
@@ -720,13 +718,15 @@ def scripts(state):
     scripts = state.project.parsed_pipfile.get("scripts", {})
     first_column_width = max(len(word) for word in ["Command"] + list(scripts))
     second_column_width = max(len(word) for word in ["Script"] + list(scripts.values()))
-    lines = ["{0:<{width}}  Script".format("Command", width=first_column_width)]
-    lines.append("{}  {}".format("-" * first_column_width, "-" * second_column_width))
+    lines = [
+        "{0:<{width}}  Script".format("Command", width=first_column_width),
+        f'{"-" * first_column_width}  {"-" * second_column_width}',
+    ]
     lines.extend(
         "{0:<{width}}  {1}".format(name, script, width=first_column_width)
         for name, script in scripts.items()
     )
-    echo("\n".join(line for line in lines))
+    echo("\n".join(lines))
 
 
 @cli.command(
@@ -786,7 +786,7 @@ def requirements(
     if categories_list:
         for category in categories_list:
             category = get_lockfile_section_using_pipfile_category(category.strip())
-            deps.update(lockfile.get(category, {}))
+            deps |= lockfile.get(category, {})
     else:
         if dev or dev_only:
             deps.update(lockfile["develop"])

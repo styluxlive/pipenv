@@ -225,7 +225,7 @@ class Setting:
             _spinners.SPINNERS[None] = {"interval": 80, "frames": "   "}
             self.PIPENV_SPINNER = None
         else:
-            pipenv_spinner = "dots" if not os.name == "nt" else "bouncingBar"
+            pipenv_spinner = "dots" if os.name != "nt" else "bouncingBar"
             self.PIPENV_SPINNER = get_from_env(
                 "SPINNER", check_for_negation=False, default=pipenv_spinner
             )
@@ -241,11 +241,10 @@ class Setting:
             if not os.path.isfile(pipenv_pipfile):
                 raise RuntimeError("Given PIPENV_PIPFILE is not found!")
 
-            else:
-                pipenv_pipfile = normalize_pipfile_path(pipenv_pipfile)
-                # Overwrite environment variable so that subprocesses can get the correct path.
-                # See https://github.com/pypa/pipenv/issues/3584
-                os.environ["PIPENV_PIPFILE"] = pipenv_pipfile
+            pipenv_pipfile = normalize_pipfile_path(pipenv_pipfile)
+            # Overwrite environment variable so that subprocesses can get the correct path.
+            # See https://github.com/pypa/pipenv/issues/3584
+            os.environ["PIPENV_PIPFILE"] = pipenv_pipfile
         self.PIPENV_PIPFILE = pipenv_pipfile
         """If set, this specifies a custom Pipfile location.
 
@@ -405,13 +404,11 @@ class Setting:
 
 def is_using_venv() -> bool:
     """Check for venv-based virtual environment which sets sys.base_prefix"""
-    if getattr(sys, "real_prefix", None) is not None:
-        # virtualenv venvs
-        result = True
-    else:
-        # PEP 405 venvs
-        result = sys.prefix != getattr(sys, "base_prefix", sys.prefix)
-    return result
+    return (
+        True
+        if getattr(sys, "real_prefix", None) is not None
+        else sys.prefix != getattr(sys, "base_prefix", sys.prefix)
+    )
 
 
 def is_in_virtualenv():
@@ -425,8 +422,8 @@ def is_in_virtualenv():
     pipenv_active = os.environ.get("PIPENV_ACTIVE", False)
     virtual_env = bool(os.environ.get("VIRTUAL_ENV"))
     ignore_virtualenvs = bool(get_from_env("IGNORE_VIRTUALENVS"))
-    return virtual_env and not (pipenv_active or ignore_virtualenvs)
+    return virtual_env and not pipenv_active and not ignore_virtualenvs
 
 
-PIPENV_SPINNER_FAIL_TEXT = "✘ {0}" if not PIPENV_HIDE_EMOJIS else "{0}"
-PIPENV_SPINNER_OK_TEXT = "✔ {0}" if not PIPENV_HIDE_EMOJIS else "{0}"
+PIPENV_SPINNER_FAIL_TEXT = "{0}" if PIPENV_HIDE_EMOJIS else "✘ {0}"
+PIPENV_SPINNER_OK_TEXT = "{0}" if PIPENV_HIDE_EMOJIS else "✔ {0}"

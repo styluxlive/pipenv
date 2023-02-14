@@ -28,9 +28,9 @@ class Version:
         match = re.match(r"^(\d+)\.(\d+)(?:\.(\d+))?$", name)
         if not match:
             raise ValueError(f"invalid version name {name!r}")
-        major = int(match.group(1))
-        minor = int(match.group(2))
-        patch = match.group(3)
+        major = int(match[1])
+        minor = int(match[2])
+        patch = match[3]
         if patch is not None:
             patch = int(patch)
         return cls(major, minor, patch)
@@ -223,10 +223,9 @@ class Asdf(Installer):
         A ValueError is raised if the given version does not have a match in
         asdf. A InstallerError is raised if the asdf command fails.
         """
-        c = self._run(
+        return self._run(
             "install",
             "python",
             str(version),
             timeout=self.project.s.PIPENV_INSTALL_TIMEOUT,
         )
-        return c

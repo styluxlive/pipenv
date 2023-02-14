@@ -39,10 +39,7 @@ def handle_exception(exc_type, exception, traceback, hook=sys.excepthook):
         formatted_lines = []
         for line in lines:
             line = line.strip("'").strip('"').strip("\n").strip()
-            if not line.startswith("File"):
-                line = f"      {line}"
-            else:
-                line = f"  {line}"
+            line = f"  {line}" if line.startswith("File") else f"      {line}"
             line = "[{!s}]: {}".format(exception.__class__.__name__, line)
             formatted_lines.append(line)
         # use new exception prettification rules to format exceptions according to
@@ -100,17 +97,9 @@ class PipenvCmdError(PipenvException):
             file=file,
         )
         if self.out:
-            click.echo(
-                "{} {}".format("OUTPUT: ", self.out),
-                file=file,
-                err=True,
-            )
+            click.echo(f"OUTPUT:  {self.out}", file=file, err=True)
         if self.err:
-            click.echo(
-                "{} {}".format("STDERR: ", self.err),
-                file=file,
-                err=True,
-            )
+            click.echo(f"STDERR:  {self.err}", file=file, err=True)
 
 
 class JSONParseError(PipenvException):
@@ -151,9 +140,7 @@ class PipenvUsageError(UsageError):
     def show(self, file=None):
         if file is None:
             file = vistir.misc.get_text_stderr()
-        color = None
-        if self.ctx is not None:
-            color = self.ctx.color
+        color = self.ctx.color if self.ctx is not None else None
         if self.extra:
             if isinstance(self.extra, str):
                 self.extra = [self.extra]
@@ -436,10 +423,8 @@ def prettify_exc(error):
     entire traceback, for better UX"""
     errors = []
     for exc in KNOWN_EXCEPTIONS:
-        search_string = exc.match_string if exc.match_string else exc.exception_name
-        split_string = (
-            exc.show_from_string if exc.show_from_string else exc.exception_name
-        )
+        search_string = exc.match_string or exc.exception_name
+        split_string = exc.show_from_string or exc.exception_name
         if search_string in error:
             # for known exceptions with no display rules and no prefix
             # we should simply show nothing
@@ -451,7 +436,4 @@ def prettify_exc(error):
             else:
                 _, error, info = error.rpartition(split_string)
             errors.append(f"{error} {info}")
-    if not errors:
-        return error
-
-    return "\n".join(errors)
+    return "\n".join(errors) if errors else error
