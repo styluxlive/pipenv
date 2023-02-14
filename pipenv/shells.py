@@ -79,11 +79,9 @@ class Shell:
     @contextlib.contextmanager
     def inject_path(self, venv):
         with temp_environ():
-            os.environ["PATH"] = "{}{}{}".format(
-                os.pathsep.join(str(p.parent) for p in _iter_python(venv)),
-                os.pathsep,
-                os.environ["PATH"],
-            )
+            os.environ[
+                "PATH"
+            ] = f'{os.pathsep.join(str(p.parent) for p in _iter_python(venv))}{os.pathsep}{os.environ["PATH"]}'
             yield
 
     def fork(self, venv, cwd, args):
@@ -92,9 +90,9 @@ class Shell:
         name = os.path.basename(venv)
         os.environ["VIRTUAL_ENV"] = str(venv)
         if "PROMPT" in os.environ:
-            os.environ["PROMPT"] = "({}) {}".format(name, os.environ["PROMPT"])
+            os.environ["PROMPT"] = f'({name}) {os.environ["PROMPT"]}'
         if "PS1" in os.environ:
-            os.environ["PS1"] = "({}) {}".format(name, os.environ["PS1"])
+            os.environ["PS1"] = f'({name}) {os.environ["PS1"]}'
         with self.inject_path(venv):
             os.chdir(cwd)
             _handover(self.cmd, self.args + list(args))
@@ -152,9 +150,7 @@ class Bash(Shell):
                 base_rc_src = f'source "{bashrc_path.as_posix()}"\n'
                 rcfile.write(base_rc_src)
 
-            export_path = 'export PATH="{}:$PATH"\n'.format(
-                ":".join(self._format_path(python) for python in _iter_python(venv))
-            )
+            export_path = f'export PATH="{":".join(self._format_path(python) for python in _iter_python(venv))}:$PATH"\n'
             rcfile.write(export_path)
             rcfile.flush()
             self.args.extend(["--rcfile", rcfile.name])
@@ -164,10 +160,7 @@ class Bash(Shell):
 class MsysBash(Bash):
     def _format_path(self, python):
         s = super()._format_path(python)
-        if not python.drive:
-            return s
-        # Convert "C:/something" to "/c/something".
-        return f"/{s[0].lower()}{s[2:]}"
+        return f"/{s[0].lower()}{s[2:]}" if python.drive else s
 
 
 class CmderEmulatedShell(Shell):

@@ -515,21 +515,22 @@ def validate_python_path(ctx, param, value):
     # autodetection but it may also be a value which will be searched in
     # the path or an absolute path. To report errors as early as possible
     # we'll report absolute paths which do not exist:
-    if isinstance(value, (str, bytes)):
-        if os.path.isabs(value) and not os.path.isfile(value):
-            raise BadParameter("Expected Python at path %s does not exist" % value)
+    if (
+        isinstance(value, (str, bytes))
+        and os.path.isabs(value)
+        and not os.path.isfile(value)
+    ):
+        raise BadParameter(f"Expected Python at path {value} does not exist")
     return value
 
 
 def validate_bool_or_none(ctx, param, value):
-    if value is not None:
-        return click_types.BOOL(value)
-    return False
+    return click_types.BOOL(value) if value is not None else False
 
 
 def validate_pypi_mirror(ctx, param, value):
     if value and not is_valid_url(value):
-        raise BadParameter("Invalid PyPI mirror URL: %s" % value)
+        raise BadParameter(f"Invalid PyPI mirror URL: {value}")
     return value
 
 

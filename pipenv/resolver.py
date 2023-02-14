@@ -193,8 +193,7 @@ class Entry:
     @markers.setter
     def markers(self, markers):
         if not markers:
-            marker_str = self.marker_to_str(markers)
-            if marker_str:
+            if marker_str := self.marker_to_str(markers):
                 self._entry = self.entry.merge_markers(marker_str)
                 self._markers = self.marker_to_str(self._entry.markers)
                 entry_dict = self.entry_dict.copy()
@@ -225,9 +224,7 @@ class Entry:
             marker_str = " and ".join([normalize_marker_str(m) for m in marker if m])
         elif isinstance(marker, str):
             marker_str = f"{normalize_marker_str(marker)}"
-        if isinstance(marker_str, str):
-            return marker_str
-        return None
+        return marker_str if isinstance(marker_str, str) else None
 
     def get_cleaned_dict(self, keep_outdated=False):
         if keep_outdated and self.is_updated:
@@ -289,7 +286,7 @@ class Entry:
 
     @property
     def is_in_pipfile(self):
-        return True if self.pipfile_name else False
+        return bool(self.pipfile_name)
 
     @property
     def pipfile_packages(self):
@@ -323,7 +320,7 @@ class Entry:
                 return "*"
             specifier = f"=={specifier}"
         elif specifier.startswith("==") and specifier.count("=") > 3:
-            specifier = "=={}".format(specifier.lstrip("="))
+            specifier = f'=={specifier.lstrip("=")}'
         return specifier
 
     @staticmethod
@@ -458,11 +455,8 @@ class Entry:
                 self.can_use_original = False
             if not constraint.specifier.contains(self.updated_version):
                 self.can_use_updated = False
-            satisfied_by_value = getattr(constraint, "satisfied_by", None)
-            if satisfied_by_value:
-                satisfied_by = "{}".format(
-                    self.clean_specifier(str(satisfied_by_value.version))
-                )
+            if satisfied_by_value := getattr(constraint, "satisfied_by", None):
+                satisfied_by = f"{self.clean_specifier(str(satisfied_by_value.version))}"
                 satisfied_by_versions.add(satisfied_by)
         if can_use_original:
             self.entry_dict = self.lockfile_dict.copy()
@@ -474,16 +468,16 @@ class Entry:
                 hashes = None
                 if self.lockfile_entry.specifiers == satisfied_by:
                     ireq = self.lockfile_entry.as_ireq()
-                    if (
-                        not self.lockfile_entry.hashes
-                        and self.resolver._should_include_hash(ireq)
-                    ):
-                        hashes = self.resolver.get_hash(ireq)
-                    else:
-                        hashes = self.lockfile_entry.hashes
-                else:
-                    if self.resolver._should_include_hash(constraint):
-                        hashes = self.resolver.get_hash(constraint)
+                    hashes = (
+                        self.resolver.get_hash(ireq)
+                        if (
+                            not self.lockfile_entry.hashes
+                            and self.resolver._should_include_hash(ireq)
+                        )
+                        else self.lockfile_entry.hashes
+                    )
+                elif self.resolver._should_include_hash(constraint):
+                    hashes = self.resolver.get_hash(constraint)
                 if hashes:
                     self.entry_dict["hashes"] = list(hashes)
                     self._entry.hashes = frozenset(hashes)
@@ -541,15 +535,7 @@ class Entry:
             ):
                 if self.project.s.is_verbose():
                     print(f"Tried constraint: {constraint!r}", file=sys.stderr)
-                msg = (
-                    "Cannot resolve conflicting version {}{} while {}{} is "
-                    "locked.".format(
-                        self.name,
-                        constraint.req.specifier,
-                        self.name,
-                        self.updated_specifier,
-                    )
-                )
+                msg = f"Cannot resolve conflicting version {self.name}{constraint.req.specifier} while {self.name}{self.updated_specifier} is locked."
                 raise DependencyConflict(msg)
         return True
 
@@ -560,16 +546,7 @@ class Entry:
             if not parent.validate_specifiers():
                 from pipenv.exceptions import DependencyConflict
 
-                msg = (
-                    "Cannot resolve conflicting versions: (Root: {}) {}{} (Pipfile) "
-                    "Incompatible with {}{} (resolved)\n".format(
-                        self.name,
-                        parent.pipfile_name,
-                        parent.pipfile_entry.requirement.specifiers,
-                        parent.name,
-                        parent.updated_specifiers,
-                    )
-                )
+                msg = f"Cannot resolve conflicting versions: (Root: {self.name}) {parent.pipfile_name}{parent.pipfile_entry.requirement.specifiers} (Pipfile) Incompatible with {parent.name}{parent.updated_specifiers} (resolved)\n"
                 raise DependencyConflict(msg)
 
     def __getattribute__(self, key):
@@ -656,9 +633,8 @@ def clean_outdated(results, resolver, project, category):
         if entry.was_editable and not entry.is_editable:
             continue
         lockfile_entry = lockfile[lockfile_section].get(name, None)
-        if not lockfile_entry:
-            if name in lockfile[lockfile_section]:
-                lockfile_entry = lockfile[lockfile_section][name]
+        if not lockfile_entry and name in lockfile[lockfile_section]:
+            lockfile_entry = lockfile[lockfile_section][name]
         if lockfile_entry and not entry.is_updated:
             old_markers = next(
                 iter(
